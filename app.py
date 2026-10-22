@@ -1,12 +1,13 @@
 """
 app.py
-LingoAI Studio: Multilingual Text Processing and Analysis System
-A college-level NLP engineering project powered by Streamlit and Sarvam AI.
+LingoAI Studio: Multilingual Text Processing and Analysis System Using Voice Commands
+A complete final-year college NLP engineering project powered by Streamlit and Sarvam AI.
 """
 
 import os
 import sys
 import json
+import base64
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -29,8 +30,8 @@ if sys.stdout and hasattr(sys.stdout, "reconfigure"):
 # ==============================================================================
 
 st.set_page_config(
-    page_title="LingoAI Studio | Multilingual NLP System",
-    page_icon="🌐",
+    page_title="LingoAI Studio | Multilingual NLP & Voice System",
+    page_icon="🎙️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -43,20 +44,142 @@ CUSTOM_CSS = """
 <style>
 /* Global App Background and Text */
 .stApp {
-    background-color: #FAF7F2;
-    color: #252522;
+    background-color: #FAF7F2 !important;
+    color: #252522 !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Force All Widget Labels to be Dark & Clear */
+label, 
+label p, 
+label span, 
+[data-testid="stWidgetLabel"], 
+[data-testid="stWidgetLabel"] p, 
+[data-testid="stWidgetLabel"] span {
+    color: #252522 !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    -webkit-text-fill-color: #252522 !important;
+}
+
+/* Force All TextAreas and Inputs to Pure White Background with Dark Charcoal Text */
+textarea, 
+input, 
+.stTextArea textarea, 
+.stTextInput input, 
+[data-baseweb="textarea"] textarea, 
+[data-baseweb="input"] input {
+    background-color: #FFFFFF !important;
+    color: #252522 !important;
+    -webkit-text-fill-color: #252522 !important;
+    border: 1.5px solid #D6CEC1 !important;
+    border-radius: 8px !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+    box-shadow: none !important;
+}
+
+/* Hover & Focus States for Inputs */
+textarea:focus, 
+input:focus, 
+.stTextArea textarea:focus, 
+.stTextInput input:focus {
+    border-color: #8B5CF6 !important;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25) !important;
+    background-color: #FFFFFF !important;
+    color: #252522 !important;
+    -webkit-text-fill-color: #252522 !important;
+}
+
+/* Placeholder Styling */
+textarea::placeholder, 
+input::placeholder, 
+.stTextArea textarea::placeholder, 
+.stTextInput input::placeholder {
+    color: #8C867A !important;
+    -webkit-text-fill-color: #8C867A !important;
+    opacity: 1 !important;
+}
+
+/* Selectbox and Dropdown Container */
+div[data-baseweb="select"] > div {
+    background-color: #FFFFFF !important;
+    color: #252522 !important;
+    border: 1.5px solid #D6CEC1 !important;
+    border-radius: 8px !important;
+}
+div[data-baseweb="select"] span, 
+div[data-baseweb="select"] div {
+    color: #252522 !important;
+    -webkit-text-fill-color: #252522 !important;
+}
+div[data-baseweb="popover"], 
+ul[data-baseweb="menu"] {
+    background-color: #FFFFFF !important;
+    color: #252522 !important;
+    border: 1px solid #D6CEC1 !important;
+}
+li[data-baseweb="menu-item"] {
+    color: #252522 !important;
+    background-color: #FFFFFF !important;
+    -webkit-text-fill-color: #252522 !important;
+}
+li[data-baseweb="menu-item"]:hover {
+    background-color: #FAF7F2 !important;
+    color: #8B5CF6 !important;
+    -webkit-text-fill-color: #8B5CF6 !important;
+}
+
+/* Radio buttons & Checkbox text */
+.stRadio label div, 
+.stRadio label span, 
+.stCheckbox label div, 
+.stCheckbox label span {
+    color: #252522 !important;
+    -webkit-text-fill-color: #252522 !important;
+    font-weight: 500 !important;
+}
+
+/* Chat Input Bar */
+[data-testid="stChatInput"] {
+    background-color: #FFFFFF !important;
+    border: 1.5px solid #D6CEC1 !important;
+    border-radius: 12px !important;
+}
+[data-testid="stChatInput"] textarea {
+    background-color: #FFFFFF !important;
+    color: #252522 !important;
+    -webkit-text-fill-color: #252522 !important;
+}
+[data-testid="stChatInput"] textarea::placeholder {
+    color: #8C867A !important;
+    -webkit-text-fill-color: #8C867A !important;
+}
+
+/* Audio Recorder & File Uploader Box */
+[data-testid="stAudioInput"], 
+[data-testid="stFileUploader"] {
+    background-color: #FFFFFF !important;
+    border: 1.5px solid #D6CEC1 !important;
+    border-radius: 10px !important;
+    padding: 10px !important;
+}
+[data-testid="stAudioInput"] *, 
+[data-testid="stFileUploader"] * {
+    color: #252522 !important;
+    -webkit-text-fill-color: #252522 !important;
 }
 
 /* Sidebar styling */
 [data-testid="stSidebar"] {
-    background-color: #FFFFFF;
-    border-right: 1px solid #EBE5DC;
+    background-color: #FFFFFF !important;
+    border-right: 1px solid #EBE5DC !important;
 }
 
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] span {
-    color: #252522;
+    color: #252522 !important;
+    -webkit-text-fill-color: #252522 !important;
 }
 
 /* Headers */
@@ -87,7 +210,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .hero-title {
-    font-size: 2.5rem;
+    font-size: 2.35rem;
     font-weight: 800;
     color: #252522;
     margin-bottom: 0.35rem;
@@ -199,6 +322,30 @@ h1, h2, h3, h4, h5, h6 {
 .entity-DATE { background-color: #FF786B; color: #FFFFFF; }
 .entity-OTHER { background-color: #FAF7F2; color: #252522; border-color: #D6CEC1; }
 
+/* Chat Bubbles */
+.chat-user {
+    background-color: #FAF7F2;
+    border: 1px solid #E8E1D5;
+    border-radius: 12px 12px 2px 12px;
+    padding: 0.9rem 1.2rem;
+    margin: 0.6rem 0;
+    color: #252522;
+    max-width: 85%;
+    margin-left: auto;
+}
+.chat-assistant {
+    background-color: #FFFFFF;
+    border: 1px solid #E4DCD0;
+    border-left: 4px solid #8B5CF6;
+    border-radius: 12px 12px 12px 2px;
+    padding: 0.9rem 1.2rem;
+    margin: 0.6rem 0;
+    color: #252522;
+    max-width: 90%;
+    margin-right: auto;
+    box-shadow: 0 2px 8px rgba(37,37,34,0.04);
+}
+
 /* Buttons Customization */
 button[kind="primary"] {
     background-color: #8B5CF6 !important;
@@ -244,12 +391,6 @@ button[kind="secondary"]:hover {
     color: #8B5CF6 !important;
 }
 
-/* Plotly chart container styling */
-.js-plotly-plot {
-    border-radius: 10px;
-    overflow: hidden;
-}
-
 /* Footer note */
 .app-footer {
     text-align: center;
@@ -270,6 +411,11 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 if "history" not in st.session_state:
     st.session_state["history"] = []
+
+if "chat_messages" not in st.session_state:
+    st.session_state["chat_messages"] = [
+        {"role": "assistant", "content": "नमस्कार! I am **LingoAI Assistant**. You can speak or type voice commands to translate text, analyze sentiment, summarize passages, or converse in English, Hindi, and Marathi."}
+    ]
 
 if "text_analyzer_input" not in st.session_state:
     st.session_state["text_analyzer_input"] = benchmark_data.SAMPLE_TEXTS["Marathi"]["text"]
@@ -301,22 +447,23 @@ def log_history_entry(op_type: str, input_text: str, output_summary: str, detail
 with st.sidebar:
     st.markdown("""
     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.5rem;">
-        <span style="font-size: 2rem;">🌐</span>
+        <span style="font-size: 2.1rem;">🎙️</span>
         <div>
             <h2 style="margin: 0; font-size: 1.35rem; color: #252522;">LingoAI Studio</h2>
-            <p style="margin: 0; font-size: 0.8rem; color: #736D64;">Multilingual NLP System</p>
+            <p style="margin: 0; font-size: 0.8rem; color: #736D64;">Multilingual NLP & Voice System</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
     st.markdown("<hr style='margin: 0.8rem 0; border: none; border-top: 1px solid #EAE3D9;'>", unsafe_allow_html=True)
     
-    # Navigation Radio
     navigation_options = [
         "🏛️ Overview",
+        "🎙️ Voice Assistant & Chat",
         "🔍 Text Analyzer",
         "🔄 Translation",
         "📝 Summarization",
+        "🔊 Voice Studio (STT & TTS)",
         "📊 Evaluation",
         "📜 History"
     ]
@@ -333,7 +480,6 @@ with st.sidebar:
     # API Configuration
     st.markdown("<h4 style='font-size: 0.95rem; margin-bottom: 0.4rem;'>🔑 API Configuration</h4>", unsafe_allow_html=True)
     default_key = os.getenv("SARVAM_API_KEY", "")
-    has_env_key = bool(default_key and default_key.strip())
     
     custom_key = st.text_input(
         "Sarvam AI Subscription Key",
@@ -355,30 +501,26 @@ with st.sidebar:
 
     st.markdown("<hr style='margin: 1.2rem 0; border: none; border-top: 1px solid #EAE3D9;'>", unsafe_allow_html=True)
     
-    # College Project Metadata
     st.markdown("""
     <div style="font-size: 0.8rem; color: #6E685E; line-height: 1.45;">
         <strong style="color: #252522;">Project Information:</strong><br>
-        • <strong>College Exhibition:</strong> Final Year NLP Engineering<br>
-        • <strong>Supported Languages:</strong> English, Hindi (हिंदी), Marathi (मराठी)<br>
-        • <strong>Engine:</strong> Sarvam AI Indic Models (`mayura:v1`, `sarvam-105b`)<br>
-        • <strong>UI Stack:</strong> Streamlit + Plotly
+        • <strong>College Exhibition:</strong> Multilingual NLP Engineering<br>
+        • <strong>Voice Models:</strong> `saaras:v3` (STT), `bulbul:v3` (TTS)<br>
+        • <strong>Chat & NLP:</strong> `sarvam-105b-conversations`<br>
+        • <strong>Translation:</strong> `mayura:v1`
     </div>
     """, unsafe_allow_html=True)
 
 
 # ==============================================================================
-# 4. COLOR PALETTE HELPERS FOR PLOTLY
+# 4. COLOR PALETTE FOR PLOTLY
 # ==============================================================================
 THEME_PURPLE = "#8B5CF6"
 THEME_CORAL = "#FF786B"
 THEME_MINT = "#BCE8D1"
 THEME_GOLD = "#F4C95D"
 THEME_CHARCOAL = "#252522"
-THEME_BG = "#FAF7F2"
 THEME_WHITE = "#FFFFFF"
-
-PALETTE_SEQUENCE = [THEME_PURPLE, THEME_CORAL, THEME_GOLD, THEME_MINT, "#D97706", "#7C3AED", "#E11D48"]
 
 
 # ==============================================================================
@@ -387,14 +529,14 @@ PALETTE_SEQUENCE = [THEME_PURPLE, THEME_CORAL, THEME_GOLD, THEME_MINT, "#D97706"
 if "Overview" in selected_page:
     st.markdown("""
     <div class="hero-box">
-        <span class="hero-badge">🎓 Engineering Exhibition Project</span>
+        <span class="hero-badge">🎙️ Voice & NLP Engineering Project</span>
         <div class="hero-title">LingoAI Studio</div>
-        <div class="hero-subtitle">Multilingual Text Processing and Analysis System for Indian Languages</div>
-        <p style="color: #4A463F; font-size: 1.05rem; line-height: 1.6; max-width: 900px; margin-bottom: 0;">
-            LingoAI Studio is an end-to-end natural language engineering platform tailored for Indian languages.
+        <div class="hero-subtitle">Multilingual Text Processing and Analysis System Using Voice Commands</div>
+        <p style="color: #4A463F; font-size: 1.05rem; line-height: 1.6; max-width: 950px; margin-bottom: 0;">
+            LingoAI Studio unites high-accuracy Devanagari text engineering with voice-driven interaction. 
             Supporting <strong>English</strong>, <strong>Hindi (हिंदी)</strong>, and <strong>Marathi (मराठी)</strong>, 
-            it unifies Devanagari regex preprocessing, high-accuracy neural translation, abstractive summarization, 
-            sentiment classification with linguistic reasoning, topic modeling, and named entity extraction.
+            it enables users to speak voice commands or type natural prompts to perform speech-to-text transcription, 
+            neural translation, abstractive summarization, sentiment reasoning, and entity extraction.
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -410,11 +552,11 @@ if "Overview" in selected_page:
         </div>
         """, unsafe_allow_html=True)
     with c2:
-        st.markdown("""
+        st.markdown(f"""
         <div class="metric-box">
-            <div class="metric-value">6</div>
-            <div class="metric-label">NLP Pipeline Tasks</div>
-            <div style="font-size: 0.75rem; color: #8A847A; margin-top: 4px;">Preprocess, Translate, Summarize, NER, Sentiment, Topic</div>
+            <div class="metric-value" style="color: #8B5CF6;">Saaras & Bulbul</div>
+            <div class="metric-label">Voice Pipeline</div>
+            <div style="font-size: 0.75rem; color: #8A847A; margin-top: 4px;">STT (`saaras:v3`) + TTS (`bulbul:v3`)</div>
         </div>
         """, unsafe_allow_html=True)
     with c3:
@@ -422,35 +564,34 @@ if "Overview" in selected_page:
         <div class="metric-box">
             <div class="metric-value" style="color: #FF786B;">Mayura</div>
             <div class="metric-label">Translation Engine</div>
-            <div style="font-size: 0.75rem; color: #8A847A; margin-top: 4px;">Indic Neural Model (`mayura:v1`)</div>
+            <div style="font-size: 0.75rem; color: #8A847A; margin-top: 4px;">Indic Neural Translation (`mayura:v1`)</div>
         </div>
         """, unsafe_allow_html=True)
     with c4:
         st.markdown(f"""
         <div class="metric-box">
             <div class="metric-value" style="color: #F4C95D;">105B</div>
-            <div class="metric-label">Multilingual LLM</div>
-            <div style="font-size: 0.75rem; color: #8A847A; margin-top: 4px;">Sarvam AI Conversational Model</div>
+            <div class="metric-label">Conversational LLM</div>
+            <div style="font-size: 0.75rem; color: #8A847A; margin-top: 4px;">Sarvam Multilingual Chatbot</div>
         </div>
         """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Core Capabilities Grid
-    st.markdown("### 🛠️ Core Capabilities & Features")
+    # Core Capabilities
+    st.markdown("### 🛠️ Core Capabilities & Voice Pipeline")
     
     col_a, col_b = st.columns(2)
     with col_a:
         st.markdown("""
         <div class="lingo-card">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                <span style="font-size: 1.4rem;">🧹</span>
-                <h4 style="margin: 0; font-size: 1.1rem;">1. Devanagari Text Preprocessing & Analytics</h4>
+                <span style="font-size: 1.4rem;">🎙️</span>
+                <h4 style="margin: 0; font-size: 1.1rem;">1. Voice Commands & Sarvam AI Chatbot</h4>
             </div>
             <p style="color: #57524A; font-size: 0.92rem; line-height: 1.5; margin: 0;">
-                Normalizes Unicode (NFC), cleans extraneous whitespace, handles Devanagari danda (।) and double danda (॥), 
-                and computes deep statistical metrics including Lexical Richness (Type-Token Ratio), script composition, 
-                and sentence length dynamics.
+                Speak naturally into your microphone in English, Hindi, or Marathi. Sarvam's <code>saaras:v3</code> transcribes 
+                the voice command, executes translation, sentiment, or summarization, and responds with audio using <code>bulbul:v3</code>.
             </p>
         </div>
         <div class="lingo-card">
@@ -460,17 +601,17 @@ if "Overview" in selected_page:
             </div>
             <p style="color: #57524A; font-size: 0.92rem; line-height: 1.5; margin: 0;">
                 Seamless bidirectional translation between English, Hindi, and Marathi utilizing Sarvam's flagship 
-                <code>mayura:v1</code> translation model, preserving grammatical subtleties and native vocabulary.
+                <code>mayura:v1</code> translation model with instant one-click voice playback.
             </p>
         </div>
         <div class="lingo-card">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                 <span style="font-size: 1.4rem;">📝</span>
-                <h4 style="margin: 0; font-size: 1.1rem;">3. Abstractive Summarization</h4>
+                <h4 style="margin: 0; font-size: 1.1rem;">3. Abstractive Summarization & Audio</h4>
             </div>
             <p style="color: #57524A; font-size: 0.92rem; line-height: 1.5; margin: 0;">
                 Distills extensive paragraphs into executive summaries or actionable bullet points with controllable 
-                conciseness levels while maintaining native script fidelity and quantifying word reduction percentage.
+                conciseness levels while quantifying word reduction percentage and synthesizing audio speech.
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -489,12 +630,12 @@ if "Overview" in selected_page:
         </div>
         <div class="lingo-card">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                <span style="font-size: 1.4rem;">🏷️</span>
-                <h4 style="margin: 0; font-size: 1.1rem;">5. Topic Modeling & Named Entity Recognition</h4>
+                <span style="font-size: 1.4rem;">🔊</span>
+                <h4 style="margin: 0; font-size: 1.1rem;">5. Voice Studio (Speech-to-Text & Text-to-Speech)</h4>
             </div>
             <p style="color: #57524A; font-size: 0.92rem; line-height: 1.5; margin: 0;">
-                Categorizes texts into standard academic/industry topics (Technology, Politics, Business, Sports, etc.) 
-                and tags named entities (Persons, Organizations, Locations, Dates) across Devanagari and Latin scripts.
+                Dedicated tools to transcribe audio files into Devanagari/Latin text and synthesize studio-quality speech 
+                with multiple Indic speaker personas, pitch, and pace adjustments.
             </p>
         </div>
         <div class="lingo-card">
@@ -511,34 +652,34 @@ if "Overview" in selected_page:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Architecture Workflow Box
-    st.markdown("### 🏗️ System Architecture & Data Flow")
+    # Architecture Flowchart
+    st.markdown("### 🏗️ Voice Commands & NLP Pipeline Architecture")
     st.markdown("""
     <div class="lingo-card" style="padding: 1.8rem;">
         <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; text-align: center;">
             <div style="flex: 1; min-width: 140px; background-color: #FAF7F2; padding: 12px; border-radius: 8px; border: 1px solid #EBE5DC;">
-                <strong style="color: #252522;">1. Input Ingestion</strong><br>
-                <span style="font-size: 0.78rem; color: #706B62;">English / Hindi / Marathi Text or CSV</span>
+                <strong style="color: #252522;">1. Voice Ingestion</strong><br>
+                <span style="font-size: 0.78rem; color: #706B62;">Mic Audio / Audio File (WAV/MP3)</span>
             </div>
             <span style="font-size: 1.5rem; color: #8B5CF6;">➔</span>
             <div style="flex: 1; min-width: 140px; background-color: #FAF7F2; padding: 12px; border-radius: 8px; border: 1px solid #EBE5DC;">
-                <strong style="color: #252522;">2. Regex Normalizer</strong><br>
-                <span style="font-size: 0.78rem; color: #706B62;">NFC, Danda & Whitespace Standardization</span>
+                <strong style="color: #252522;">2. Sarvam STT</strong><br>
+                <span style="font-size: 0.78rem; color: #706B62;">`saaras:v3` Multilingual Transcription</span>
             </div>
             <span style="font-size: 1.5rem; color: #8B5CF6;">➔</span>
             <div style="flex: 1; min-width: 140px; background-color: #FAF7F2; padding: 12px; border-radius: 8px; border: 1px solid #EBE5DC;">
-                <strong style="color: #252522;">3. Sarvam AI Models</strong><br>
-                <span style="font-size: 0.78rem; color: #706B62;">`mayura:v1` & `sarvam-105b`</span>
+                <strong style="color: #252522;">3. Command & LLM</strong><br>
+                <span style="font-size: 0.78rem; color: #706B62;">Intent Parsing & `sarvam-105b`</span>
             </div>
             <span style="font-size: 1.5rem; color: #8B5CF6;">➔</span>
             <div style="flex: 1; min-width: 140px; background-color: #FAF7F2; padding: 12px; border-radius: 8px; border: 1px solid #EBE5DC;">
-                <strong style="color: #252522;">4. Analytics & Plotly</strong><br>
-                <span style="font-size: 0.78rem; color: #706B62;">Interactive Charts & Metric Badges</span>
+                <strong style="color: #252522;">4. NLP Processing</strong><br>
+                <span style="font-size: 0.78rem; color: #706B62;">Translation, Sentiment, NER</span>
             </div>
             <span style="font-size: 1.5rem; color: #8B5CF6;">➔</span>
             <div style="flex: 1; min-width: 140px; background-color: #FAF7F2; padding: 12px; border-radius: 8px; border: 1px solid #EBE5DC;">
-                <strong style="color: #252522;">5. Export & Audit</strong><br>
-                <span style="font-size: 0.78rem; color: #706B62;">Session History & CSV/TXT Downloads</span>
+                <strong style="color: #252522;">5. Sarvam TTS</strong><br>
+                <span style="font-size: 0.78rem; color: #706B62;">`bulbul:v3` Voice Response</span>
             </div>
         </div>
     </div>
@@ -546,13 +687,128 @@ if "Overview" in selected_page:
 
 
 # ==============================================================================
-# 6. PAGE: TEXT ANALYZER
+# 6. PAGE: VOICE ASSISTANT & CHATBOT
+# ==============================================================================
+elif "Voice Assistant & Chat" in selected_page:
+    st.markdown("## 🎙️ Voice Assistant & Multilingual Chatbot")
+    st.markdown("Interact via voice commands or text chat in English, Hindi, and Marathi. Powered by Sarvam AI (`sarvam-105b-conversations`, `saaras:v3`, `bulbul:v3`).")
+
+    # Quick Voice Command Hints
+    st.markdown("""
+    <div style="font-size: 0.85rem; color: #6E685D; margin-bottom: 8px;">
+        <strong>💡 Try Voice Commands like:</strong>
+        <em>"Translate 'Welcome to Maharashtra' to Marathi"</em> •
+        <em>"Analyze sentiment of 'हे ॲप खरोखरच खूप छान आणि उपयुक्त आहे!'"</em> •
+        <em>"Summarize: [Paste text]"</em> •
+        <em>"Tell me about the history of ISRO in Hindi"</em>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Voice Input Section
+    with st.expander("🎙️ Record or Upload Voice Command", expanded=True):
+        v_col1, v_col2 = st.columns([1.2, 1])
+        with v_col1:
+            st.markdown("<div style='font-size: 0.85rem; font-weight: 600; color: #403C35; margin-bottom: 4px;'>Browser Microphone Input:</div>", unsafe_allow_html=True)
+            voice_recording = st.audio_input("Record your voice command", label_visibility="collapsed")
+        with v_col2:
+            st.markdown("<div style='font-size: 0.85rem; font-weight: 600; color: #403C35; margin-bottom: 4px;'>Or Upload Audio File:</div>", unsafe_allow_html=True)
+            voice_file = st.file_uploader("Upload audio (.wav, .mp3)", type=["wav", "mp3", "m4a"], label_visibility="collapsed")
+
+        # Process Voice if supplied
+        audio_to_process = voice_recording or voice_file
+        if audio_to_process is not None:
+            if st.button("🚀 Transcribe & Execute Voice Command", type="primary"):
+                with st.spinner("Transcribing speech with Sarvam Saaras:v3..."):
+                    stt_res = nlp_utils.speech_to_text(audio_to_process, api_key=custom_key)
+                    if stt_res.get("success"):
+                        transcribed_text = stt_res.get("transcript", "")
+                        st.success(f"**Transcribed Voice Command:** {transcribed_text}")
+                        
+                        # Add user message
+                        st.session_state["chat_messages"].append({"role": "user", "content": transcribed_text})
+                        
+                        # Process command
+                        with st.spinner("Processing command with Sarvam AI..."):
+                            cmd_res = nlp_utils.parse_and_execute_voice_command(transcribed_text, api_key=custom_key)
+                            bot_reply = cmd_res.get("reply", "")
+                            st.session_state["chat_messages"].append({"role": "assistant", "content": bot_reply})
+                            
+                            # Log to history
+                            log_history_entry(
+                                op_type="Voice Command",
+                                input_text=transcribed_text,
+                                output_summary=bot_reply[:80],
+                                details=cmd_res
+                            )
+                            st.rerun()
+                    else:
+                        st.error(stt_res.get("error", "Failed to transcribe audio."))
+
+    st.markdown("<hr style='margin: 1.2rem 0; border: none; border-top: 1px solid #EAE3D9;'>", unsafe_allow_html=True)
+
+    # Chat Messages History
+    for idx, msg in enumerate(st.session_state["chat_messages"]):
+        if msg["role"] == "user":
+            st.markdown(f"""
+            <div class="chat-user">
+                <strong>You:</strong><br>{msg['content']}
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div class="chat-assistant">
+                <strong>LingoAI Assistant:</strong><br>{msg['content']}
+            </div>
+            """, unsafe_allow_html=True)
+
+            # TTS Audio Playback for assistant message
+            btn_key = f"tts_chat_{idx}"
+            if st.button(f"🔊 Listen to Response (TTS)", key=btn_key):
+                with st.spinner("Synthesizing speech with Sarvam Bulbul:v3..."):
+                    # Detect language from text
+                    lid = nlp_utils.identify_language(msg['content'], api_key=custom_key)
+                    lang = lid.get("language_code", "mr-IN") if lid.get("language_code") in nlp_utils.SUPPORTED_LANGUAGES else "mr-IN"
+                    tts_res = nlp_utils.text_to_speech(msg['content'], language_code=lang, speaker="aditya", api_key=custom_key)
+                    if tts_res.get("success"):
+                        st.audio(tts_res["audio_bytes"], format="audio/wav")
+                    else:
+                        st.error(tts_res.get("error", "TTS synthesis failed."))
+
+    # Text Chat Input
+    with st.container():
+        user_chat_text = st.chat_input("Type your question or voice command here (English, Hindi, or Marathi)...")
+        if user_chat_text:
+            st.session_state["chat_messages"].append({"role": "user", "content": user_chat_text})
+            
+            with st.spinner("Thinking..."):
+                cmd_res = nlp_utils.parse_and_execute_voice_command(user_chat_text, api_key=custom_key)
+                bot_reply = cmd_res.get("reply", "")
+                st.session_state["chat_messages"].append({"role": "assistant", "content": bot_reply})
+                
+                log_history_entry(
+                    op_type="Chat / Command",
+                    input_text=user_chat_text,
+                    output_summary=bot_reply[:80],
+                    details=cmd_res
+                )
+                st.rerun()
+
+    if len(st.session_state["chat_messages"]) > 1:
+        if st.button("🗑️ Clear Chat History"):
+            st.session_state["chat_messages"] = [
+                {"role": "assistant", "content": "Chat reset. How can I assist you with Indian language processing today?"}
+            ]
+            st.rerun()
+
+
+# ==============================================================================
+# 7. PAGE: TEXT ANALYZER
 # ==============================================================================
 elif "Text Analyzer" in selected_page:
     st.markdown("## 🔍 Multilingual Text Analyzer")
     st.markdown("Analyze grammatical structure, script statistics, sentiment polarity, topic category, and named entities.")
 
-    # Sample Text Loader Buttons
+    # Sample Buttons
     st.markdown("<div style='font-size: 0.88rem; font-weight: 600; color: #696359; margin-bottom: 6px;'>LOAD EXHIBITION SAMPLES:</div>", unsafe_allow_html=True)
     c_s1, c_s2, c_s3, c_s4 = st.columns([1, 1, 1, 1])
     with c_s1:
@@ -591,10 +847,9 @@ elif "Text Analyzer" in selected_page:
         height=140,
         placeholder="Type or paste Devanagari or Latin text here to analyze..."
     )
-    # Keep session state synced
     st.session_state["text_analyzer_input"] = user_text
 
-    col_btn1, col_btn2 = st.columns([1, 5])
+    col_btn1, col_btn2 = st.columns([1.2, 5])
     with col_btn1:
         analyze_btn = st.button("🚀 Analyze Text", type="primary", use_container_width=True)
 
@@ -603,7 +858,6 @@ elif "Text Analyzer" in selected_page:
             st.warning("Please enter or load some text before running the analysis.")
         else:
             with st.spinner("Processing text and querying Sarvam AI NLP models..."):
-                # Step 1: Preprocessing
                 processed_text = nlp_utils.clean_text(
                     user_text,
                     remove_extra_spaces=clean_spaces,
@@ -611,14 +865,9 @@ elif "Text Analyzer" in selected_page:
                     standardize_punctuation=std_punct,
                     lowercase_english=lower_eng
                 )
-                
-                # Step 2: Compute real text statistics
                 stats = nlp_utils.calculate_text_statistics(processed_text)
-                
-                # Step 3: Call Sarvam AI NLP API for Sentiment, Topic, and NER
                 nlp_res = nlp_utils.analyze_nlp(processed_text, api_key=custom_key)
                 
-                # Cache results in session state for rendering and export
                 st.session_state["last_analysis"] = {
                     "raw_text": user_text,
                     "processed_text": processed_text,
@@ -626,7 +875,6 @@ elif "Text Analyzer" in selected_page:
                     "nlp_res": nlp_res
                 }
 
-                # Log to session history
                 sentiment_label = nlp_res.get("sentiment", {}).get("label", "N/A") if nlp_res.get("success") else "Error"
                 topic_label = nlp_res.get("classification", {}).get("topic", "N/A") if nlp_res.get("success") else "Error"
                 log_history_entry(
@@ -636,7 +884,7 @@ elif "Text Analyzer" in selected_page:
                     details={"stats": stats, "nlp": nlp_res}
                 )
 
-    # Render Results if available
+    # Render Results
     if "last_analysis" in st.session_state:
         analysis_data = st.session_state["last_analysis"]
         stats = analysis_data["stats"]
@@ -645,7 +893,6 @@ elif "Text Analyzer" in selected_page:
         st.markdown("<hr style='margin: 1.5rem 0; border: none; border-top: 1px solid #E8E2D8;'>", unsafe_allow_html=True)
         st.markdown("### 📊 Text Statistics & Linguistics")
 
-        # 4 Key Stat Metrics
         m1, m2, m3, m4 = st.columns(4)
         with m1:
             st.markdown(f"""
@@ -684,7 +931,6 @@ elif "Text Analyzer" in selected_page:
 
         # AI Insights Cards: Sentiment & Topic
         col_res_l, col_res_r = st.columns(2)
-        
         with col_res_l:
             st.markdown("""<div class="lingo-card">""", unsafe_allow_html=True)
             st.markdown("#### 💬 Sentiment Analysis")
@@ -736,7 +982,6 @@ elif "Text Analyzer" in selected_page:
                 
                 st.markdown(f"<div style='margin-bottom: 1rem;'>{chips_html}</div>", unsafe_allow_html=True)
                 
-                # Breakdown table and chart
                 ent_df = pd.DataFrame(entities)
                 if not ent_df.empty and "type" in ent_df.columns:
                     c_ent_tbl, c_ent_pie = st.columns([1, 1])
@@ -761,72 +1006,26 @@ elif "Text Analyzer" in selected_page:
                         st.plotly_chart(fig_ent, use_container_width=True)
                 st.markdown("</div>", unsafe_allow_html=True)
             else:
-                st.info("No specific named entities detected in the provided snippet.")
-        else:
-            st.warning("Entity extraction was not returned.")
+                st.info("No specific named entities detected in this snippet.")
 
-        # Plotly Visualizations: Script Breakdown & Word Frequency
-        st.markdown("### 📈 Visual NLP Analytics")
-        v_col1, v_col2 = st.columns(2)
-        
-        with v_col1:
-            st.markdown("""<div class="lingo-card">""", unsafe_allow_html=True)
-            st.markdown("#### Script & Character Distribution")
-            script_data = {
-                "Character Category": ["Devanagari Chars", "Latin Chars", "Numerals", "Punctuation"],
-                "Count": [stats["devanagari_chars"], stats["latin_chars"], stats["digit_chars"], stats["punct_chars"]]
-            }
-            sdf = pd.DataFrame(script_data)
-            fig_script = px.bar(
-                sdf,
-                x="Character Category",
-                y="Count",
-                color="Character Category",
-                color_discrete_sequence=[THEME_PURPLE, THEME_CORAL, THEME_GOLD, THEME_MINT]
-            )
-            fig_script.update_layout(
-                paper_bgcolor=THEME_WHITE,
-                plot_bgcolor=THEME_WHITE,
-                showlegend=False,
-                margin=dict(t=20, b=20, l=20, r=20),
-                font=dict(color=THEME_CHARCOAL),
-                xaxis=dict(gridcolor="#EBE5DC"),
-                yaxis=dict(gridcolor="#EBE5DC")
-            )
-            st.plotly_chart(fig_script, use_container_width=True)
-            st.markdown(f"<div style='font-size: 0.85rem; color: #696359;'>Primary Script Identified: <strong>{stats['primary_script']}</strong></div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        with v_col2:
-            st.markdown("""<div class="lingo-card">""", unsafe_allow_html=True)
-            st.markdown("#### Top 10 Most Frequent Tokens")
-            if stats["top_words"]:
-                top_w_df = pd.DataFrame(list(stats["top_words"].items()), columns=["Token", "Frequency"])
-                fig_words = px.bar(
-                    top_w_df,
-                    x="Frequency",
-                    y="Token",
-                    orientation="h",
-                    color_discrete_sequence=[THEME_PURPLE]
-                )
-                fig_words.update_layout(
-                    paper_bgcolor=THEME_WHITE,
-                    plot_bgcolor=THEME_WHITE,
-                    margin=dict(t=20, b=20, l=20, r=20),
-                    font=dict(color=THEME_CHARCOAL),
-                    yaxis=dict(autorange="reversed", gridcolor="#EBE5DC"),
-                    xaxis=dict(gridcolor="#EBE5DC")
-                )
-                st.plotly_chart(fig_words, use_container_width=True)
-            else:
-                st.info("No frequent tokens found.")
-            st.markdown("</div>", unsafe_allow_html=True)
+        # Text-to-Speech Playback of Analyzed Text
+        st.markdown("### 🔊 Listen to Text (Text-to-Speech)")
+        tts_col1, tts_col2 = st.columns([1.5, 3])
+        with tts_col1:
+            if st.button("🔊 Read Analyzed Text Aloud (TTS)", use_container_width=True):
+                with st.spinner("Synthesizing speech with Sarvam Bulbul:v3..."):
+                    lid = nlp_utils.identify_language(user_text, api_key=custom_key)
+                    lang = lid.get("language_code", "mr-IN") if lid.get("language_code") in nlp_utils.SUPPORTED_LANGUAGES else "mr-IN"
+                    tts_out = nlp_utils.text_to_speech(user_text, language_code=lang, speaker="aditya", api_key=custom_key)
+                    if tts_out.get("success"):
+                        st.audio(tts_out["audio_bytes"], format="audio/wav")
+                    else:
+                        st.error(tts_out.get("error", "Speech synthesis failed."))
 
         # Export Analysis Results
         st.markdown("### 💾 Export Analysis Report")
         exp_col1, exp_col2, exp_col3 = st.columns(3)
         
-        # Prepare text report
         txt_report = f"""LINGOAI STUDIO - NLP ANALYSIS REPORT
 Generated At: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 ------------------------------------------------------------
@@ -869,7 +1068,6 @@ NAMED ENTITIES EXTRACTED:
                 use_container_width=True
             )
         with exp_col3:
-            # Stats CSV
             stat_df = pd.DataFrame([stats])
             st.download_button(
                 "📥 Download Stats (.csv)",
@@ -881,11 +1079,11 @@ NAMED ENTITIES EXTRACTED:
 
 
 # ==============================================================================
-# 7. PAGE: TRANSLATION
+# 8. PAGE: TRANSLATION
 # ==============================================================================
 elif "Translation" in selected_page:
     st.markdown("## 🔄 Multilingual Translation Studio")
-    st.markdown("High-fidelity neural machine translation between English, Hindi, and Marathi powered by Sarvam AI `mayura:v1`.")
+    st.markdown("High-fidelity neural machine translation between English, Hindi, and Marathi powered by Sarvam AI `mayura:v1` with voice output.")
 
     # Sample Buttons
     st.markdown("<div style='font-size: 0.88rem; font-weight: 600; color: #696359; margin-bottom: 6px;'>LOAD EXHIBITION SAMPLES:</div>", unsafe_allow_html=True)
@@ -934,12 +1132,12 @@ elif "Translation" in selected_page:
         model_choice = st.selectbox(
             "Translation Engine",
             options=["mayura:v1", "sarvam-translate:v1"],
-            help="`mayura:v1` is Sarvam AI's primary Indic neural translation model."
+            help="`mayura:v1` is Sarvam AI's flagship Indic neural translation model."
         )
 
     preprocess_before_tr = st.checkbox("Preprocess & Normalize text before translating", value=True)
 
-    # Two-Column Layout for Translation
+    # Two-Column Layout
     col_src, col_tgt = st.columns(2)
     
     with col_src:
@@ -947,7 +1145,7 @@ elif "Translation" in selected_page:
         tr_input_text = st.text_area(
             "Source Text Input",
             value=st.session_state.get("translation_input", ""),
-            height=200,
+            height=180,
             placeholder="Enter text to translate...",
             label_visibility="collapsed"
         )
@@ -961,7 +1159,7 @@ elif "Translation" in selected_page:
         tr_output_area = st.text_area(
             "Translated Output Text",
             value=translated_display,
-            height=200,
+            height=180,
             placeholder="Translation will appear here upon clicking Translate...",
             label_visibility="collapsed"
         )
@@ -969,10 +1167,19 @@ elif "Translation" in selected_page:
         st.markdown(f"<div style='font-size: 0.8rem; color: #706B62; margin-top: 4px;'>Length: {len(translated_display)} characters | {tgt_words} words</div>", unsafe_allow_html=True)
 
     # Action Buttons
-    b_col1, b_col2, b_col3 = st.columns([1.5, 1.5, 3])
+    b_col1, b_col2, b_col3 = st.columns([1.5, 1.5, 2])
     with b_col1:
         translate_btn = st.button("🚀 Translate Now", type="primary", use_container_width=True)
     with b_col2:
+        if translated_display:
+            if st.button("🔊 Speak Translation (TTS)", use_container_width=True):
+                with st.spinner("Synthesizing translation speech with Sarvam Bulbul:v3..."):
+                    tts_res = nlp_utils.text_to_speech(translated_display, language_code=target_lang_choice, speaker="aditya", api_key=custom_key)
+                    if tts_res.get("success"):
+                        st.audio(tts_res["audio_bytes"], format="audio/wav")
+                    else:
+                        st.error(tts_res.get("error", "TTS error."))
+    with b_col3:
         if translated_display:
             st.download_button(
                 "📥 Download Translation (.txt)",
@@ -991,7 +1198,6 @@ elif "Translation" in selected_page:
                 if preprocess_before_tr:
                     input_to_send = nlp_utils.clean_text(input_to_send)
 
-                # Real translation API call
                 res = nlp_utils.translate_text(
                     text=input_to_send,
                     source_lang=source_lang_choice,
@@ -1004,7 +1210,6 @@ elif "Translation" in selected_page:
                     translated_text = res.get("translated_text", "")
                     st.session_state["last_translated_text"] = translated_text
                     
-                    # Log into session history
                     log_history_entry(
                         op_type="Translation",
                         input_text=tr_input_text,
@@ -1017,7 +1222,7 @@ elif "Translation" in selected_page:
 
 
 # ==============================================================================
-# 8. PAGE: SUMMARIZATION
+# 9. PAGE: SUMMARIZATION
 # ==============================================================================
 elif "Summarization" in selected_page:
     st.markdown("## 📝 Multilingual Text Summarization")
@@ -1059,7 +1264,6 @@ elif "Summarization" in selected_page:
             format_func=lambda x: {"short": "⚡ Short (1-2 lines)", "medium": "⚖️ Medium (Balanced)", "detailed": "📖 Detailed"}[x]
         )
 
-    # Input Area
     sum_input = st.text_area(
         "Input text to summarize:",
         value=st.session_state.get("summarization_input", ""),
@@ -1101,7 +1305,6 @@ elif "Summarization" in selected_page:
         st.markdown("<hr style='margin: 1.5rem 0; border: none; border-top: 1px solid #E8E2D8;'>", unsafe_allow_html=True)
         st.markdown("### 📋 Generated Summary")
 
-        # Compression Statistics
         col_m1, col_m2, col_m3 = st.columns(3)
         with col_m1:
             st.markdown(f"""
@@ -1127,7 +1330,6 @@ elif "Summarization" in selected_page:
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # Summary Presentation Box
         st.markdown("""<div class="lingo-card" style="border-left: 5px solid #8B5CF6;">""", unsafe_allow_html=True)
         st.markdown(f"<p style='font-size: 1.05rem; line-height: 1.6; color: #252522;'>{sum_res['summary']}</p>", unsafe_allow_html=True)
         
@@ -1138,17 +1340,157 @@ elif "Summarization" in selected_page:
                 st.markdown(f"<li style='color: #403C35; margin-bottom: 4px;'>{b}</li>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # Download button
-        st.download_button(
-            "📥 Download Summary (.txt)",
-            data=sum_res["summary"],
-            file_name="lingoai_summary.txt",
-            mime="text/plain"
-        )
+        # Voice Playback of Summary
+        s_col1, s_col2 = st.columns([1.5, 3])
+        with s_col1:
+            if st.button("🔊 Listen to Summary (TTS)", use_container_width=True):
+                with st.spinner("Synthesizing speech with Sarvam Bulbul:v3..."):
+                    lid = nlp_utils.identify_language(sum_res["summary"], api_key=custom_key)
+                    lang = lid.get("language_code", "mr-IN") if lid.get("language_code") in nlp_utils.SUPPORTED_LANGUAGES else "mr-IN"
+                    tts_res = nlp_utils.text_to_speech(sum_res["summary"], language_code=lang, speaker="aditya", api_key=custom_key)
+                    if tts_res.get("success"):
+                        st.audio(tts_res["audio_bytes"], format="audio/wav")
+                    else:
+                        st.error(tts_res.get("error", "TTS error."))
+        with s_col2:
+            st.download_button(
+                "📥 Download Summary (.txt)",
+                data=sum_res["summary"],
+                file_name="lingoai_summary.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
 
 
 # ==============================================================================
-# 9. PAGE: EVALUATION
+# 10. PAGE: VOICE STUDIO (STT & TTS)
+# ==============================================================================
+elif "Voice Studio" in selected_page:
+    st.markdown("## 🔊 Voice Studio (Speech-to-Text & Text-to-Speech)")
+    st.markdown("Dedicated Indian language audio intelligence powered by Sarvam AI (`saaras:v3` for STT and `bulbul:v3` for TTS).")
+
+    tab_stt, tab_tts = st.tabs(["🎙️ Speech-to-Text (STT Transcription)", "🗣️ Text-to-Speech (Audio Synthesis)"])
+
+    # --- TAB 1: SPEECH TO TEXT ---
+    with tab_stt:
+        st.markdown("""
+        <div class="lingo-card">
+            <h4 style="margin: 0 0 6px 0;">Transcribe Audio in Devanagari & Indian English</h4>
+            <p style="color: #5E584E; font-size: 0.9rem; margin: 0;">
+                Record your voice or upload audio in Marathi, Hindi, or English. Powered by <code>saaras:v3</code>.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        stt_col1, stt_col2 = st.columns([1.2, 1])
+        with stt_col1:
+            stt_audio_rec = st.audio_input("Record audio via browser microphone")
+        with stt_col2:
+            stt_audio_file = st.file_uploader("Or upload audio file", type=["wav", "mp3", "m4a", "ogg", "flac"], key="stt_file_upload")
+
+        stt_lang_opt = st.selectbox(
+            "Spoken Audio Language",
+            options=["unknown", "mr-IN", "hi-IN", "en-IN"],
+            format_func=lambda x: "🌐 Auto Detect" if x == "unknown" else nlp_utils.SUPPORTED_LANGUAGES.get(x, x),
+            key="stt_lang_select"
+        )
+
+        stt_target_audio = stt_audio_rec or stt_audio_file
+        if stt_target_audio is not None:
+            if st.button("🚀 Transcribe Audio to Text", type="primary", key="btn_run_stt"):
+                with st.spinner("Processing speech transcription with Sarvam Saaras:v3..."):
+                    res = nlp_utils.speech_to_text(stt_target_audio, language_code=stt_lang_opt, api_key=custom_key)
+                    if res.get("success"):
+                        trans = res.get("transcript", "")
+                        st.session_state["last_stt_result"] = trans
+                        log_history_entry(
+                            op_type="Speech-to-Text",
+                            input_text="Audio Input",
+                            output_summary=trans[:80],
+                            details=res
+                        )
+                    else:
+                        st.error(res.get("error", "Transcription error."))
+
+        if "last_stt_result" in st.session_state:
+            st.markdown("#### 📜 Transcribed Text Output:")
+            st.text_area("Transcript", value=st.session_state["last_stt_result"], height=120)
+            st.download_button(
+                "📥 Download Transcript (.txt)",
+                data=st.session_state["last_stt_result"],
+                file_name="audio_transcript.txt",
+                mime="text/plain"
+            )
+
+    # --- TAB 2: TEXT TO SPEECH ---
+    with tab_tts:
+        st.markdown("""
+        <div class="lingo-card">
+            <h4 style="margin: 0 0 6px 0;">Synthesize Natural Human Speech</h4>
+            <p style="color: #5E584E; font-size: 0.9rem; margin: 0;">
+                Convert Devanagari (Marathi/Hindi) or English text into natural voice audio using <code>bulbul:v3</code>.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        tts_input = st.text_area(
+            "Text to speak:",
+            value="छत्रपती शिवाजी महाराज यांनी स्वराज्य स्थापनेसाठी अद्वितीय पराक्रम गाजवला.",
+            height=100
+        )
+
+        tc1, tc2, tc3 = st.columns(3)
+        with tc1:
+            tts_lang = st.selectbox(
+                "Language",
+                options=["mr-IN", "hi-IN", "en-IN"],
+                format_func=lambda x: nlp_utils.SUPPORTED_LANGUAGES.get(x, x),
+                index=0,
+                key="tts_lang_select"
+            )
+        with tc2:
+            tts_speaker = st.selectbox(
+                "Speaker Persona",
+                options=["aditya", "ritu", "priya", "neha", "rahul", "pooja", "rohan", "simran", "kavya", "soham"],
+                index=0,
+                key="tts_speaker_select"
+            )
+        with tc3:
+            tts_pace = st.slider("Speech Pace", min_value=0.7, max_value=1.3, value=1.0, step=0.05)
+
+        if st.button("🚀 Generate Audio Speech (TTS)", type="primary", key="btn_run_tts"):
+            if not tts_input.strip():
+                st.warning("Please enter text for synthesis.")
+            else:
+                with st.spinner("Generating audio with Sarvam Bulbul:v3..."):
+                    res = nlp_utils.text_to_speech(
+                        text=tts_input,
+                        language_code=tts_lang,
+                        speaker=tts_speaker,
+                        pace=tts_pace,
+                        api_key=custom_key
+                    )
+                    if res.get("success"):
+                        st.success("Audio synthesized successfully!")
+                        st.audio(res["audio_bytes"], format="audio/wav")
+                        st.download_button(
+                            "📥 Download Synthesized Audio (.wav)",
+                            data=res["audio_bytes"],
+                            file_name=f"speech_{tts_lang}_{tts_speaker}.wav",
+                            mime="audio/wav"
+                        )
+                        log_history_entry(
+                            op_type="Text-to-Speech",
+                            input_text=tts_input,
+                            output_summary=f"Audio generated ({tts_lang}, speaker: {tts_speaker})",
+                            details={"lang": tts_lang, "speaker": tts_speaker}
+                        )
+                    else:
+                        st.error(res.get("error", "TTS synthesis error."))
+
+
+# ==============================================================================
+# 11. PAGE: EVALUATION
 # ==============================================================================
 elif "Evaluation" in selected_page:
     st.markdown("## 📊 Mathematical Evaluation Framework")
@@ -1259,7 +1601,6 @@ elif "Evaluation" in selected_page:
         st.markdown("<hr style='margin: 1.5rem 0; border: none; border-top: 1px solid #E8E2D8;'>", unsafe_allow_html=True)
         st.markdown(f"### 📈 Live Evaluation Results ({task_name.capitalize()})")
 
-        # Key Metrics Row
         em1, em2, em3, em4 = st.columns(4)
         with em1:
             st.markdown(f"""
@@ -1301,8 +1642,6 @@ elif "Evaluation" in selected_page:
         with c_hm:
             st.markdown("""<div class="lingo-card">""", unsafe_allow_html=True)
             st.markdown("#### Real Confusion Matrix Heatmap")
-            
-            # Confusion Matrix heatmap using palette: Warm Ivory -> Gold -> Coral -> Purple
             fig_cm = px.imshow(
                 metrics["confusion_matrix_grid"],
                 x=metrics["classes"],
@@ -1339,19 +1678,15 @@ elif "Evaluation" in selected_page:
                 st.info("No class support data found.")
             st.markdown("</div>", unsafe_allow_html=True)
 
-        # Detailed Inspection Table
         st.markdown("### 🔍 Sample-by-Sample Prediction Audit")
-        
         filter_opt = st.radio("Filter Samples", ["Show All", "Misclassified Only"], horizontal=True)
         display_eval_df = results_df.copy()
         if filter_opt == "Misclassified Only":
             display_eval_df = display_eval_df[~display_eval_df["is_correct"]]
 
-        # Display friendly columns
         audit_cols = [c for c in ["id", "language", "text", "true_sentiment", "true_topic", "predicted", "is_correct", "model_explanation"] if c in display_eval_df.columns]
         st.dataframe(display_eval_df[audit_cols], use_container_width=True, hide_index=True)
 
-        # Download Report
         st.download_button(
             "📥 Download Evaluation Results (.csv)",
             data=results_df.to_csv(index=False),
@@ -1361,7 +1696,7 @@ elif "Evaluation" in selected_page:
 
 
 # ==============================================================================
-# 10. PAGE: HISTORY
+# 12. PAGE: HISTORY
 # ==============================================================================
 elif "History" in selected_page:
     st.markdown("## 📜 Session History & Audit Log")
@@ -1370,7 +1705,7 @@ elif "History" in selected_page:
     history_list = st.session_state.get("history", [])
 
     if not history_list:
-        st.info("No operations have been recorded in this session yet. Try analyzing, translating, or evaluating some text!")
+        st.info("No operations have been recorded in this session yet. Try speaking a voice command, analyzing text, translating, or evaluating!")
     else:
         h_col1, h_col2 = st.columns([1, 4])
         with h_col1:
@@ -1379,7 +1714,6 @@ elif "History" in selected_page:
                 st.rerun()
         with h_col2:
             hist_df = pd.DataFrame(history_list)
-            # Remove nested details from raw CSV export to make it clean
             export_df = hist_df[["timestamp", "operation", "input_preview", "output_summary", "input_length"]]
             st.download_button(
                 "📥 Export History as CSV",
@@ -1402,11 +1736,11 @@ elif "History" in selected_page:
 
 
 # ==============================================================================
-# 11. FOOTER
+# 13. FOOTER
 # ==============================================================================
 st.markdown("""
 <div class="app-footer">
-    <strong>LingoAI Studio</strong> — Multilingual Text Processing and Analysis System<br>
+    <strong>LingoAI Studio</strong> — Multilingual Text Processing and Analysis System Using Voice Commands<br>
     Final Year NLP Engineering Project Exhibition • Powered by Sarvam AI & Streamlit
 </div>
 """, unsafe_allow_html=True)

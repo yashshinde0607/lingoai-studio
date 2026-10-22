@@ -1,15 +1,17 @@
 """
 nlp_utils.py
 Core Natural Language Processing utilities, regex preprocessing,
-Sarvam AI SDK integration, and evaluation calculations for LingoAI Studio.
+Sarvam AI SDK integration (Translation, Chatbot, STT, TTS, Summarization, Analytics),
+and evaluation calculations for LingoAI Studio.
 """
 
 import os
 import re
 import json
+import base64
 import unicodedata
 from collections import Counter
-from typing import Dict, List, Tuple, Any, Optional
+from typing import Dict, List, Tuple, Any, Optional, Union
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -36,6 +38,16 @@ TOPIC_CATEGORIES = [
 ]
 
 SENTIMENT_CLASSES = ["Positive", "Negative", "Neutral"]
+
+# Valid speakers for bulbul:v3
+AVAILABLE_SPEAKERS = [
+    "aditya", "ritu", "priya", "neha", "rahul", "pooja", 
+    "rohan", "simran", "kavya", "amit", "dev", "ishita", 
+    "shreya", "ratan", "varun", "manan", "sumit", "roopa", 
+    "kabir", "aayan", "shubh", "advait", "anand", "tanya", 
+    "tarun", "sunny", "mani", "gokul", "vijay", "shruti", 
+    "suhani", "mohit", "kavitha", "rehan", "soham", "rupali"
+]
 
 
 # ==============================================================================
@@ -90,7 +102,6 @@ def tokenize_words(text: str) -> List[str]:
     """
     if not text:
         return []
-    # Matches sequences of Devanagari characters (including matras/nuktas) or Latin alphanumeric words
     tokens = re.findall(r'[\u0900-\u097Fa-zA-Z0-9_]+', text)
     return tokens
 
@@ -103,7 +114,6 @@ def tokenize_sentences(text: str) -> List[str]:
     if not text or not text.strip():
         return []
     
-    # Split on sentence terminals followed by space or end of text
     raw_sentences = re.split(r'([.!?।॥]+(?:\s+|\n+|$))', text.strip())
     sentences = []
     current = ""
@@ -152,7 +162,6 @@ def calculate_text_statistics(text: str) -> Dict[str, Any]:
     chars_no_space = len(re.sub(r'\s+', '', text))
     word_count = len(words)
     
-    # Lowercase Latin words for counting, leave Devanagari as-is
     normalized_words = [w.lower() if re.match(r'^[a-zA-Z]', w) else w for w in words]
     unique_words = len(set(normalized_words))
     sentence_count = max(len(sentences), 1 if word_count > 0 else 0)
@@ -161,10 +170,8 @@ def calculate_text_statistics(text: str) -> Dict[str, Any]:
     avg_word_length = round(sum(len(w) for w in words) / word_count, 2) if word_count > 0 else 0.0
     avg_sentence_len = round(word_count / sentence_count, 2) if sentence_count > 0 else 0.0
     
-    # Script composition
     devanagari_chars = len(re.findall(r'[\u0900-\u097F]', text))
     latin_chars = len(re.findall(r'[a-zA-Z]', text))
-    # Count Arabic and Devanagari numerals
     digit_chars = len(re.findall(r'[0-9\u0966-\u096F]', text))
     punct_chars = len(re.findall(r'[^\w\s\u0900-\u097F]', text))
     
@@ -177,11 +184,9 @@ def calculate_text_statistics(text: str) -> Dict[str, Any]:
     else:
         primary_script = "Numeric / Symbols"
 
-    # Frequent words (filter single letter noise if desired)
     filtered_words = [w for w in normalized_words if len(w) > 1]
     top_words = dict(Counter(filtered_words).most_common(10))
     
-    # Word length distribution
     lengths = [len(w) for w in words]
     length_dist = dict(Counter(lengths))
 
@@ -245,13 +250,12 @@ def identify_language(text: str, api_key: Optional[str] = None) -> Dict[str, Any
                 "source": "Sarvam AI API"
             }
         except Exception:
-            pass  # Fall through to heuristic
+            pass
 
     # Heuristic fallback
     deva_count = len(re.findall(r'[\u0900-\u097F]', text))
     latn_count = len(re.findall(r'[a-zA-Z]', text))
     if deva_count > latn_count:
-        # Check for Marathi-specific letters (ळ \u0933) or common Marathi markers
         if "ळ" in text or re.search(r'\b(आहे|आणि|नाही|झाले|केले|होते|म्हणून)\b', text):
             return {"language_code": "mr-IN", "script_code": "Deva", "language_name": "Marathi (मराठी)", "source": "Heuristic"}
         return {"language_code": "hi-IN", "script_code": "Deva", "language_name": "Hindi (हिंदी)", "source": "Heuristic"}
@@ -304,10 +308,10 @@ def translate_text(
     except Exception as e:
         error_msg = str(e)
         if "status_code: 401" in error_msg or "Unauthorized" in error_msg:
-            return {"success": False, "translated_text": "", "error": "Authentication failed: Invalid SARVAM_API_KEY."}
+            return {"success": False, "translated_text": "", "error": "Authentication failed: Invalid SARVAM_API_KEY. Please verify your key."}
         elif "status_code: 429" in error_msg:
             return {"success": False, "translated_text": "", "error": "Rate limit exceeded. Please wait a moment and try again."}
-        return {"success": False, "translated_text": "", "error": f"Translation request error: {error_msg}"}
+        return {"success": False, "translated_text": "", "error": f"Translation error: {error_msg}"}
 
 
 def generate_summary(
@@ -363,7 +367,6 @@ Return ONLY the raw JSON object, without markdown quotes."""
         )
         content = res.choices[0].message.content or ""
         
-        # Parse JSON
         parsed_data = {}
         match = re.search(r'\{.*\}', content, re.DOTALL)
         if match:
@@ -376,7 +379,6 @@ Return ONLY the raw JSON object, without markdown quotes."""
         bullets = parsed_data.get("bullet_points", [])
         lang = parsed_data.get("language", "Auto")
 
-        # Calculate word reduction
         orig_words = len(tokenize_words(text))
         summary_words = len(tokenize_words(summary_text))
         reduction = round((1 - (summary_words / max(orig_words, 1))) * 100, 1) if orig_words > 0 else 0.0
@@ -442,16 +444,13 @@ Do NOT output markdown fences or extra conversational text."""
         )
         content = res.choices[0].message.content or ""
         
-        # Extract JSON safely
         match = re.search(r'\{.*\}', content, re.DOTALL)
         if match:
             data = json.loads(match.group(0))
         else:
             data = json.loads(content)
 
-        # Normalize sentiment
         raw_sentiment = str(data.get("sentiment", "Neutral")).strip().capitalize()
-        # Handle Devanagari variations if model returns native terms
         if any(w in raw_sentiment for w in ["सकारात्मक", "आनंद", "चांगले"]):
             sentiment = "Positive"
         elif any(w in raw_sentiment for w in ["नकारात्मक", "वाईट", "दुःख", "खराब"]):
@@ -461,7 +460,6 @@ Do NOT output markdown fences or extra conversational text."""
         else:
             sentiment = "Neutral"
 
-        # Normalize topic
         raw_topic = str(data.get("topic", "Other")).strip()
         topic = raw_topic if raw_topic in TOPIC_CATEGORIES else "Other"
 
@@ -488,7 +486,205 @@ Do NOT output markdown fences or extra conversational text."""
 
 
 # ==============================================================================
-# 3. EVALUATION FRAMEWORK & METRICS CALCULATION
+# 3. VOICE ENGINE: TEXT-TO-SPEECH (TTS) & SPEECH-TO-TEXT (STT)
+# ==============================================================================
+
+def text_to_speech(
+    text: str,
+    language_code: str = "mr-IN",
+    speaker: str = "aditya",
+    pace: float = 1.0,
+    pitch: float = 0.0,
+    api_key: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Converts text to natural human speech using Sarvam AI's 'bulbul:v3' model.
+    Returns audio bytes and base64 encoded audio string ready for Streamlit audio playback.
+    """
+    if not text or not text.strip():
+        return {"success": False, "audio_bytes": None, "error": "Input text for speech synthesis cannot be empty."}
+
+    client, err = get_sarvam_client(api_key)
+    if not client:
+        return {"success": False, "audio_bytes": None, "error": err}
+
+    selected_speaker = speaker if speaker in AVAILABLE_SPEAKERS else "aditya"
+    valid_lang = language_code if language_code in SUPPORTED_LANGUAGES else "mr-IN"
+
+    try:
+        res = client.text_to_speech.convert(
+            text=text[:500],
+            language_code=valid_lang,
+            model="bulbul:v3",
+            speaker=selected_speaker,
+            pace=pace,
+            pitch=pitch
+        )
+        if res.audios and len(res.audios) > 0:
+            b64_audio = res.audios[0]
+            audio_bytes = base64.b64decode(b64_audio)
+            return {
+                "success": True,
+                "audio_bytes": audio_bytes,
+                "audio_base64": b64_audio,
+                "language_code": valid_lang,
+                "speaker": selected_speaker,
+                "error": None
+            }
+        return {"success": False, "audio_bytes": None, "error": "No audio was returned from Sarvam TTS service."}
+    except Exception as e:
+        return {"success": False, "audio_bytes": None, "error": f"TTS synthesis failed: {str(e)}"}
+
+
+def speech_to_text(
+    audio_data: Union[bytes, Any],
+    language_code: str = "unknown",
+    model: str = "saaras:v3",
+    api_key: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Transcribes spoken audio into text using Sarvam AI's 'saaras:v3' speech-to-text model.
+    Accepts raw audio bytes or a file-like object from Streamlit audio recorder.
+    """
+    if not audio_data:
+        return {"success": False, "transcript": "", "error": "Audio data is required."}
+
+    client, err = get_sarvam_client(api_key)
+    if not client:
+        return {"success": False, "transcript": "", "error": err}
+
+    if hasattr(audio_data, "read"):
+        raw_bytes = audio_data.read()
+    elif isinstance(audio_data, bytes):
+        raw_bytes = audio_data
+    else:
+        return {"success": False, "transcript": "", "error": "Invalid audio data format."}
+
+    if len(raw_bytes) < 100:
+        return {"success": False, "transcript": "", "error": "Audio recording is too short or empty."}
+
+    try:
+        res = client.speech_to_text.transcribe(
+            file=("audio.wav", raw_bytes, "audio/wav"),
+            model=model,
+            language_code=language_code if language_code in SUPPORTED_LANGUAGES or language_code == "unknown" else "unknown"
+        )
+        transcript = getattr(res, "transcript", "")
+        detected_lang = getattr(res, "language_code", language_code)
+        return {
+            "success": True,
+            "transcript": transcript,
+            "detected_language": detected_lang,
+            "error": None
+        }
+    except Exception as e:
+        return {"success": False, "transcript": "", "error": f"Speech transcription failed: {str(e)}"}
+
+
+# ==============================================================================
+# 4. CONVERSATIONAL SARVAM AI CHATBOT & VOICE COMMAND PROCESSOR
+# ==============================================================================
+
+def chat_with_sarvam(
+    messages: List[Dict[str, str]],
+    system_prompt: Optional[str] = None,
+    api_key: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Converses with Sarvam AI's multilingual chat model (sarvam-105b-conversations).
+    Maintains full conversational flow across English, Hindi, and Marathi.
+    """
+    client, err = get_sarvam_client(api_key)
+    if not client:
+        return {"success": False, "reply": "", "error": err}
+
+    default_system = (
+        "You are LingoAI Assistant, an advanced multilingual AI chatbot for Indian languages "
+        "(English, Hindi, Marathi) created for LingoAI Studio. You can converse naturally in English, Hindi, "
+        "and Marathi. You can understand voice commands to translate, summarize, analyze sentiment, "
+        "or answer general queries. Always be respectful, highly accurate, and reply in the same language "
+        "the user uses unless explicitly asked to translate."
+    )
+
+    sys_content = system_prompt or default_system
+    full_messages = [{"role": "system", "content": sys_content}] + messages
+
+    try:
+        res = client.chat.completions(
+            model="sarvam-105b-conversations",
+            messages=full_messages,
+            temperature=0.3
+        )
+        reply = res.choices[0].message.content or ""
+        return {
+            "success": True,
+            "reply": reply.strip(),
+            "error": None
+        }
+    except Exception as e:
+        return {"success": False, "reply": "", "error": f"Chatbot error: {str(e)}"}
+
+
+def parse_and_execute_voice_command(
+    command_text: str,
+    api_key: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Interprets user voice command and executes NLP operations or routes to conversational AI.
+    """
+    cleaned = command_text.strip()
+    lower_cmd = cleaned.lower()
+
+    # Pattern 1: Translation Voice Command
+    tr_match = re.search(r'(?:translate|भाषांतर करा|अनुवाद करो)\s+[\'"]?(.+?)[\'"]?\s+(?:to|into|मध्ये|में)\s+(marathi|hindi|english|मराठी|हिंदी|इंग्रजी)', cleaned, re.IGNORECASE)
+    if tr_match:
+        text_to_tr = tr_match.group(1)
+        target_name = tr_match.group(2).lower()
+        target_code = "mr-IN" if any(x in target_name for x in ["marathi", "मराठी"]) else ("hi-IN" if any(x in target_name for x in ["hindi", "हिंदी"]) else "en-IN")
+        tr_res = translate_text(text_to_tr, source_lang="auto", target_lang=target_code, api_key=api_key)
+        if tr_res.get("success"):
+            return {
+                "action": "translate",
+                "original": text_to_tr,
+                "result": tr_res["translated_text"],
+                "target_lang": target_code,
+                "reply": f"Here is the translation:\n\n**{tr_res['translated_text']}**"
+            }
+
+    # Pattern 2: Sentiment Voice Command
+    if any(k in lower_cmd for k in ["sentiment", "भावना", "भावना विश्लेषण"]):
+        nlp_res = analyze_nlp(cleaned, api_key=api_key)
+        if nlp_res.get("success"):
+            sent = nlp_res["sentiment"]
+            return {
+                "action": "sentiment",
+                "result": sent,
+                "reply": f"The sentiment of your statement is **{sent['label']}** (Confidence: {int(sent['confidence']*100)}%).\n\n*Explanation:* {sent['explanation']}"
+            }
+
+    # Pattern 3: Summarization Voice Command
+    if lower_cmd.startswith("summarize") or "सारांश" in lower_cmd:
+        passage = re.sub(r'^(?:summarize|सारांश करा|सारांश निकालो)[:\s]*', '', cleaned, flags=re.IGNORECASE)
+        if len(tokenize_words(passage)) >= 10:
+            sum_res = generate_summary(passage, style="paragraph", api_key=api_key)
+            if sum_res.get("success"):
+                return {
+                    "action": "summarize",
+                    "result": sum_res,
+                    "reply": f"**Summary:**\n{sum_res['summary']}\n\n*(Reduced by {sum_res['reduction_percentage']}%)*"
+                }
+
+    # Default: General Multilingual Chatbot Conversation
+    chat_res = chat_with_sarvam([{"role": "user", "content": cleaned}], api_key=api_key)
+    return {
+        "action": "chat",
+        "reply": chat_res.get("reply", "I am listening. How can I help you today?"),
+        "error": chat_res.get("error")
+    }
+
+
+# ==============================================================================
+# 5. EVALUATION FRAMEWORK & METRICS CALCULATION
 # ==============================================================================
 
 def calculate_evaluation_metrics(
@@ -508,8 +704,6 @@ def calculate_evaluation_metrics(
         raise ValueError("y_true and y_pred must be non-empty and of equal length.")
 
     total_samples = len(y_true)
-    
-    # Standardize string formatting
     y_true_clean = [str(y).strip().capitalize() for y in y_true]
     y_pred_clean = [str(y).strip().capitalize() for y in y_pred]
 
@@ -518,13 +712,11 @@ def calculate_evaluation_metrics(
     else:
         classes = [str(c).strip().capitalize() for c in classes]
 
-    # Initialize Confusion Matrix [rows = true, cols = pred]
     cm = {c_true: {c_pred: 0 for c_pred in classes} for c_true in classes}
     for t, p in zip(y_true_clean, y_pred_clean):
         if t in cm and p in cm[t]:
             cm[t][p] += 1
         elif t in cm:
-            # If predicted label is outside known classes, map to Other or closest
             if "Other" in cm[t]:
                 cm[t]["Other"] += 1
 
@@ -555,7 +747,6 @@ def calculate_evaluation_metrics(
             "f1_score": round(f1, 4)
         }
 
-        # Only include classes with support > 0 in macro averages
         if (tp + fn) > 0:
             precisions.append(precision)
             recalls.append(recall)
@@ -565,7 +756,6 @@ def calculate_evaluation_metrics(
     macro_recall = sum(recalls) / len(recalls) if recalls else 0.0
     macro_f1 = sum(f1s) / len(f1s) if f1s else 0.0
 
-    # Build 2D list for Plotly heatmap
     z_matrix = [[cm[r][col] for col in classes] for r in classes]
 
     return {
@@ -605,7 +795,6 @@ def run_batch_evaluation(
         text_val = str(row[text_col])
         true_val = str(row[label_col])
         
-        # Run prediction
         analysis = analyze_nlp(text_val, api_key=api_key)
         
         if analysis.get("success"):
@@ -616,7 +805,6 @@ def run_batch_evaluation(
                 pred_label = analysis["classification"]["topic"]
                 exp = analysis["classification"]["explanation"]
         else:
-            # In case of API failure, record Unknown to maintain honest metrics
             pred_label = "Neutral" if task == "sentiment" else "Other"
             exp = analysis.get("error", "API request failed")
 
